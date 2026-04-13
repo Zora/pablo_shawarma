@@ -10,9 +10,6 @@ from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-# =========================================================
-# CONFIG
-# =========================================================
 VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "mysecret123").strip()
 ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "").strip()
 PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
@@ -43,9 +40,6 @@ logger = logging.getLogger("whatsapp_hr_bot")
 app = FastAPI(title=APP_NAME)
 
 
-# =========================================================
-# DATABASE
-# =========================================================
 def get_conn():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL is missing")
@@ -232,9 +226,6 @@ def get_employee(employee_number: str) -> str:
     )
 
 
-# =========================================================
-# WHATSAPP HELPERS
-# =========================================================
 def normalize_number(number: str) -> str:
     return (number or "").strip().replace("+", "")
 
@@ -288,27 +279,19 @@ def send_whatsapp_text(to_number: str, message_text: str) -> None:
         logger.exception("Failed to send WhatsApp message: %s", exc)
 
 
-# =========================================================
-# COMMAND HANDLER
-# =========================================================
 def build_menu(is_admin: bool) -> str:
     base = [
         f"🤖 {APP_NAME}",
         "",
         "Arahan tersedia:",
         "1. menu",
-        "2. help",
-        "3. ping",
-        "4. whoami",
-        "5. list employees",
-        "6. employee EMP001",
+        "2. ping",
+        "3. whoami",
+        "4. list employees",
+        "5. employee EMP001",
     ]
     if is_admin:
-        base.extend(
-            [
-                "7. add employee|EMP001|Ali|60123456789|HR|Clerk",
-            ]
-        )
+        base.append("6. add employee|EMP001|Ali|60123456789|HR|Clerk")
     return "\n".join(base)
 
 
@@ -352,8 +335,6 @@ def handle_text_message(
         if not admin:
             return "Hanya superadmin boleh tambah employee."
 
-        # Format:
-        # add employee|EMP001|Ali|60123456789|HR|Clerk
         parts = text.split("|")
         if len(parts) != 6:
             return (
@@ -388,9 +369,6 @@ def handle_text_message(
     )
 
 
-# =========================================================
-# PAYLOAD PARSER
-# =========================================================
 def extract_messages(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     results: List[Dict[str, Any]] = []
 
@@ -423,9 +401,6 @@ def extract_messages(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     return results
 
 
-# =========================================================
-# ROUTES
-# =========================================================
 @app.on_event("startup")
 def startup_event():
     logger.info("Starting %s", APP_NAME)
@@ -490,7 +465,6 @@ async def receive_webhook(request: Request):
             if message_type == "text":
                 reply = handle_text_message(from_number, contact_name, text_body or "")
                 send_whatsapp_text(from_number, reply)
-
             elif message_type == "image":
                 send_whatsapp_text(from_number, "Gambar diterima 👍")
             elif message_type == "document":
